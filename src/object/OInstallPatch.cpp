@@ -42,7 +42,7 @@ OInstallPatch::~OInstallPatch() {
     uninstallThread.join();
 }
 void OInstallPatch::StartDownload() {
-  if (flowState != PatchFlowState::Idle)
+  if (flowState != PatchFlowState::Idle || flowState != PatchFlowState::Failed)
     return;
   flowState = PatchFlowState::Installing;
   currentStep = InstallStep::DownloadPatch;
