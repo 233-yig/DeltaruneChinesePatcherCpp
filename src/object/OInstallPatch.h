@@ -26,12 +26,7 @@ public:
     Finished
   };
 
-  enum class PatchFlowState {
-    Idle,
-    Installing,
-    Installed,
-    Failed
-  };
+  enum class PatchFlowState { Idle, Installing, Installed, Failed };
 
   // UI 调用
   void StartDownload();
@@ -75,9 +70,9 @@ private:
 
   // === 安装线程 ===
   std::thread installThread;
-  std::atomic<bool> installing{false};
   std::thread uninstallThread;
-  std::atomic<bool> uninstalling{false};
+  std::atomic_bool installing{false};
+  std::atomic_bool uninstalling{false};
 
   // === UI ===
   std::vector<BOText *> installStepText;

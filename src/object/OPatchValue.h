@@ -5,7 +5,7 @@
 #include "../engine/DownloadTask.h"
 #include <filesystem>
 #include <memory>
-class OPatchValue : GameObject {
+class OPatchValue : public GameObject {
 public:
   enum class PatchValueState { NotReady, Ready, Failed };
   OPatchValue();

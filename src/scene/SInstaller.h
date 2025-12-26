@@ -11,6 +11,7 @@ class GameObject;
 class OCheckGamePath;
 class OPatchValue;
 class OInstallPatch;
+class OReadme;
 
 class SInstaller : public GameScene {
 public:
@@ -22,7 +23,6 @@ public:
 private:
   enum class Page { README, PATCH, ABOUT };
   BOText *versionText{nullptr};
-  BOScrollText *readmeText{nullptr};
   BOText *contactText{nullptr};
   BOText *languageText{nullptr};
   BOText *currentGamePath{nullptr};
@@ -37,11 +37,13 @@ private:
 
   BOButton *installPatchButton{nullptr};
   BOButton *downloadPatchButton{nullptr};
+  BOButton *uninstallPatchButton{nullptr};
 
   void SwitchPage(Page page);
 
   OCheckGamePath *gamePathDetector;
   OPatchValue *patchValue;
   OInstallPatch *installPatch;
+  OReadme* readmeText;
 };
 #endif

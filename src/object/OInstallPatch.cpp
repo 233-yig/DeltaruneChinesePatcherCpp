@@ -11,7 +11,8 @@
 #include <vector>
 
 OInstallPatch::OInstallPatch(OPatchValue *pv, OCheckGamePath *cgp)
-    : patchValue(pv), checkGamePath(cgp), tempDir("temp"),
+    : patchValue(pv), checkGamePath(cgp),
+      tempDir(std::filesystem::temp_directory_path()),
       patchFile(fs::path("patch") /
                 ("patch-" + GameManager::Get()->GetCurrentLanguage() + ".7z")) {
 
@@ -27,11 +28,7 @@ OInstallPatch::OInstallPatch(OPatchValue *pv, OCheckGamePath *cgp)
   };
 }
 
-OInstallPatch::~OInstallPatch() {
-  if (installThread.joinable())
-    installThread.join();
-}
-
+OInstallPatch::~OInstallPatch() { patchDownloadTask->Cancel(); }
 void OInstallPatch::StartDownload() {
   if (flowState != PatchFlowState::Idle)
     return;
@@ -85,6 +82,9 @@ void OInstallPatch::StartInstall() {
   if (installing || uninstalling)
     return;
 
+  if (installThread.joinable()) {
+    installThread.join();
+  }
   installing = true;
   flowState = PatchFlowState::Installing;
 
@@ -94,6 +94,9 @@ void OInstallPatch::StartUninstall() {
   if (installing || uninstalling)
     return;
 
+  if (uninstallThread.joinable()) {
+    uninstallThread.join();
+  }
   uninstalling = true;
   flowState = PatchFlowState::Installing;
 
@@ -201,6 +204,7 @@ void OInstallPatch::UninstallWorker() {
     return Abort("Uninstall failed: backup folder doesn't exist.");
   if (!BackupGame(gamePath, true))
     return Abort("Uninstall failed: backup is broken.");
+  currentStep = InstallStep::DownloadPatch;
   flowState = PatchFlowState::Idle;
   uninstalling = false;
 }

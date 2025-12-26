@@ -22,7 +22,8 @@
     },
     "Patch": {
         "DownloadPatch": "下载最新补丁",
-        "InstallPatch": "安装汉化补丁"
+        "InstallPatch": "安装补丁",
+        "UninstallPatch": "卸载补丁"
     },
     "InstallStep": {
         "DownloadPatch": "下载汉化补丁",

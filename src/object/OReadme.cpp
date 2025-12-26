@@ -1,4 +1,5 @@
 ﻿#include "OReadme.h"
+#include "../engine/LangManager.h"
 
 #include "../engine/GameManager.h"
 #include "../engine/LogManager.h"
@@ -8,6 +9,26 @@
 #include <vector>
 
 namespace fs = std::filesystem;
+
+OReadme::OReadme() {
+  std::string filename = FindReadmeFile();
+  std::string content = LoadReadmeContent(filename);
+
+  readmeText = new BOScrollText(content, {280, 150, 630, 450}, WHITE,
+                                LangManager::GetFont().baseSize * 3 / 4);
+}
+
+OReadme::~OReadme() { delete readmeText; }
+
+void OReadme::Update(float dt) {
+  if (readmeText)
+    readmeText->Update(dt);
+}
+
+void OReadme::Draw() {
+  if (readmeText)
+    readmeText->Draw();
+}
 
 std::string OReadme::FindReadmeFile() const {
   std::string lang = GameManager::Get()->GetCurrentLanguage();
@@ -27,9 +48,8 @@ std::string OReadme::FindReadmeFile() const {
 }
 
 std::string OReadme::LoadReadmeContent(const std::string &filename) const {
-  if (filename.empty()) {
+  if (filename.empty())
     return "";
-  }
 
   try {
     std::ifstream file(filename, std::ios::binary);
@@ -45,9 +65,4 @@ std::string OReadme::LoadReadmeContent(const std::string &filename) const {
                         std::string(e.what()));
     return "";
   }
-}
-
-std::string OReadme::GetReadmeText() const {
-  std::string file = FindReadmeFile();
-  return LoadReadmeContent(file);
 }

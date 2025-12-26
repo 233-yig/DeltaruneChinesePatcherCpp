@@ -2,7 +2,7 @@
 #define O_CHECK_TOOL
 #include "../engine/GameObject.h"
 #include <nlohmann/json.hpp>
-class OCheckTool : GameObject {
+class OCheckTool : public GameObject {
 public:
   void Draw() override {}
   void Update(float dt) override {};
