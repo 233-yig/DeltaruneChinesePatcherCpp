@@ -27,12 +27,14 @@ SInstaller::SInstaller() {
   currentGamePath = new BOText("", {290, 60}, WHITE, false, smallFontSize);
   gamePathState = new BOText("", {290, 100}, YELLOW, false, smallFontSize);
   browsePathButton = new BOButton("GamePath.Browse", {290, 150}, {240, 80}),
+  downloadPatchButton =
+      new BOButton("Patch.DownloadPatch", {300, 300}, {240, 80});
   installPatchButton =
-      new BOButton("Patch.InstallPatch", {450, 300}, {240, 80});
+      new BOButton("Patch.InstallPatch", {600, 300}, {240, 80});
 
   background = {
       new BOImage("image/bg_static.png", {0, 0}, {960, 510}, Fade(WHITE, 0.8f)),
-      new BOImage("image/bg_anim.png", {0, 510}, 5, 0.2f, {960, 1050},
+      new BOImage("image/bg_anim.png", {0, 510}, 5, 0.2f, {960, 210},
                   Fade(WHITE, 0.8f))};
 
   leftBar = {
@@ -59,8 +61,9 @@ SInstaller::SInstaller() {
       currentGamePath,
       gamePathState,
       browsePathButton,
+      downloadPatchButton,
       installPatch,
-    installPatchButton};
+      installPatchButton};
 
   readmePage = {
       new BOImage("image/black.png", {270, 20}, {670, 680}, Fade(WHITE, 0.5f)),
@@ -90,7 +93,8 @@ SInstaller::~SInstaller() {
 void SInstaller::Init() {
   // about page
   versionText->SetParam(
-      "VERSION", GameManager::Get()->Settings().Get<std::string>("patcherVersion"));
+      "VERSION",
+      GameManager::Get()->Settings().Get<std::string>("patcherVersion"));
   contactText->SetParam(
       "QQ_GROUP_CODE",
       GameManager::Get()->Settings().Get<std::string>("qqGroupCode"));
@@ -105,10 +109,9 @@ void SInstaller::Init() {
   };
 
   browsePathButton->SetCallback([this]() {
-    std::string result = tinyfd_selectFolderDialog(
+    char* result = tinyfd_selectFolderDialog(
         LangManager::GetText("MsgBox.SelectFolder").c_str(), ".");
-
-    if (result != "") {
+    if (result) {
       currentGamePath->SetText(result);
       gamePathDetector->SetPath(result);
     }
@@ -119,8 +122,10 @@ void SInstaller::Init() {
   };
 
   installPatchButton->SetCallback(
-      [this]() { bool state = installPatch->Install(); });
+      [this]() { installPatch->StartInstall(); });
 
+  downloadPatchButton->SetCallback(
+      [this]() { installPatch->StartDownload(); });
   AddObjects(background);
   AddObjects(leftBar);
   AddObjects(patchPage);

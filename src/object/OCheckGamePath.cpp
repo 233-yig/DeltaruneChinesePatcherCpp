@@ -107,7 +107,8 @@ std::string OCheckGamePath::AutoDetectPath() {
 
 void OCheckGamePath::Update(float dt) {
   (void)dt;
-  if (pending && patchValue->GetState() != OPatchValue::PatchValueState::NotReady) {
+  if (pending &&
+      patchValue->GetState() != OPatchValue::PatchValueState::NotReady) {
     HandleValidateResult(pendingPath);
   }
 }
@@ -145,17 +146,18 @@ void OCheckGamePath::SetPath(const std::string &path) {
   pendingPath = path;
   HandleValidateResult(path);
 }
+
 void OCheckGamePath::HandleValidateResult(const std::string &path) {
   PathState st = ValidatePath(path);
 
-  if (st == PathState::InvalidPatchValueNotReady) {
+  if (st == PathState::NeedPatchValue) {
     pending = true;
     return;
   }
 
   pending = false;
 
-  if (st == PathState::Valid || st == PathState::ValidButNoACF) {
+  if (st == PathState::ValidFresh || st == PathState::ValidUpdate) {
     if (pendingAuto)
       TriggerSuccess("GamePath.Detected", path);
     else
@@ -170,83 +172,68 @@ void OCheckGamePath::HandleValidateResult(const std::string &path) {
 
 OCheckGamePath::PathState
 OCheckGamePath::ValidatePath(const std::string &path) {
-  fs::path p(path);
 
+  fs::path p(path);
   LogManager::Info("[GamePath] Validating path: " + path);
 
-  if (!fs::exists(p)) {
-    LogManager::Warning("[GamePath] Path not exists: " + path);
-    return PathState::InvalidNotFound;
-  }
-
-  fs::path exePath = p / "DELTARUNE.exe";
-  if (!fs::exists(exePath)) {
-    LogManager::Warning("[GamePath] DELTARUNE.exe not found in: " + path);
+  if (!fs::exists(p) || !fs::exists(p / "DELTARUNE.exe")) {
     return PathState::InvalidNotFound;
   }
 
   auto patchState = patchValue->GetState();
+  if (patchState == OPatchValue::PatchValueState::NotReady) {
+    LogManager::Info("[GamePath] PatchValue not ready, wait...");
+    return PathState::NeedPatchValue;
+  }
+
+  fs::path freshFile = p / "data.win";
+  fs::path updateFile = p / "backup" / "data.win";
+
+  bool skipHash = (patchState == OPatchValue::PatchValueState::Failed);
+  std::string expected;
+
+  if (!skipHash) {
+    expected = patchValue->GetValue("deltaruneSha256sum");
+    LogManager::Info("[GamePath] Expected sha256: " + expected);
+  } else {
+    LogManager::Warning("[GamePath] PatchValue failed, skip sha256 check.");
+  }
+
+  auto checkFile = [&](const fs::path &f) -> bool {
+    if (!fs::exists(f))
+      return false;
+    if (skipHash)
+      return true;
+    std::string actual = GameUtil::CalcFileSha256(f.string());
+    return actual == expected;
+  };
+
   std::string appId =
       GameManager::Get()->Settings().Get<std::string>("deltaruneAppId");
-
   fs::path acfPath =
       p.parent_path().parent_path() / ("appmanifest_" + appId + ".acf");
 
-  struct Candidate {
-    fs::path file;
-    InstallMode mode;
-  };
+  hasACF = fs::exists(acfPath);
 
-  const Candidate candidates[] = {
-      {p / "backup" / "data.win", InstallMode::Update},
-      {p / "data.win", InstallMode::Fresh},
-  };
-
-  bool skipHash = (patchState == OPatchValue::PatchValueState::Failed);
-  std::string expectedHash;
-
-  if (!skipHash) {
-    expectedHash = patchValue->GetValue("deltaruneSha256sum");
-    LogManager::Info("[GamePath] Expected data.win sha256: " + expectedHash);
+  if (hasACF) {
+    LogManager::Info("[GamePath] Steam ACF found: " + acfPath.string());
   } else {
-    LogManager::Warning(
-        "[GamePath] Patch value failed, sha256 check will be skipped.");
+    LogManager::Warning("[GamePath] Steam ACF not found.");
   }
 
-  bool foundDataWin = false;
-  for (const auto &c : candidates) {
-    if (!fs::exists(c.file)) {
-      LogManager::Info("[GamePath] Candidate not found: " + c.file.string());
-      continue;
-    }
-    LogManager::Info("[GamePath] Found candidate: " + c.file.string());
-    foundDataWin = true;
-
-    if (!skipHash) {
-      LogManager::Info("[GamePath] Calculating sha256...");
-      std::string actual = GameUtil::CalcFileSha256(c.file.string());
-      if (actual != expectedHash) {
-        LogManager::Warning("[GamePath] Sha256 mismatch: " + actual);
-        continue;
-      }
-      LogManager::Info("[GamePath] Sha256 matched.");
-    }
-
-    currentMode = c.mode;
-    LogManager::Info(std::string("[GamePath] Install mode: ") +
-                     (c.mode == InstallMode::Fresh ? "Fresh" : "Update"));
-
-    if (fs::exists(acfPath)) {
-      LogManager::Info("[GamePath] Steam ACF found: " + acfPath.string());
-      return PathState::Valid;
-    } else {
-      LogManager::Warning("[GamePath] Steam ACF not found: " +
-                          acfPath.string());
-      return PathState::ValidButNoACF;
-    }
+  if (checkFile(updateFile)) {
+    currentMode = InstallMode::Update;
+    return PathState::ValidUpdate;
   }
 
-  LogManager::Warning("[GamePath] No valid data.win found");
-  return foundDataWin ? PathState::InvalidShaMismatch
-                      : PathState::InvalidNotFound;
+  if (checkFile(freshFile)) {
+    currentMode = InstallMode::Fresh;
+    return PathState::ValidFresh;
+  }
+
+  if (fs::exists(updateFile) || fs::exists(freshFile)) {
+    return PathState::InvalidShaMismatch;
+  }
+
+  return PathState::InvalidNotFound;
 }

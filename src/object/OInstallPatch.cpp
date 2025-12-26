@@ -1,59 +1,135 @@
 ﻿#include "OInstallPatch.h"
 #include "../engine/GameManager.h"
 #include "../engine/GameUtil.h"
-#include "../engine/LangManager.h"
 #include "OCheckGamePath.h"
 #include "OPatchValue.h"
 #include "raylib.h"
-#include "tinyfiledialogs.h"
+#include <cstddef>
 #include <filesystem>
 #include <fstream>
 #include <memory>
 #include <vector>
 
 OInstallPatch::OInstallPatch(OPatchValue *pv, OCheckGamePath *cgp)
-    : patchValue(pv), checkGamePath(cgp), tempDir(fs::path("temp")),
+    : patchValue(pv), checkGamePath(cgp), tempDir("temp"),
       patchFile(fs::path("patch") /
                 ("patch-" + GameManager::Get()->GetCurrentLanguage() + ".7z")) {
+
   stateArrow = new BOText("->", {300, 480}, YELLOW);
+
   installStepText = {
-      new BOText("InstallStep.DownloadPatch", {350, 495}, WHITE),
+      new BOText("InstallStep.DownloadPatch", {350, 460}, WHITE),
+      new BOText("InstallStep.ValidatePatch", {350, 495}, WHITE),
       new BOText("InstallStep.BackupGame", {350, 530}, WHITE),
       new BOText("InstallStep.ExtractPatch", {350, 565}, WHITE),
       new BOText("InstallStep.ApplyDelta", {350, 600}, WHITE),
       new BOText("InstallStep.CopyStaticFiles", {350, 635}, WHITE),
   };
 }
-OInstallPatch::InstallStep OInstallPatch::GetCurrentStep() {
-  return currentStep;
+
+OInstallPatch::~OInstallPatch() {
+  if (installThread.joinable())
+    installThread.join();
 }
 
+void OInstallPatch::StartDownload() {
+  if (flowState != PatchFlowState::Idle)
+    return;
+  flowState = PatchFlowState::Installing;
+  currentStep = InstallStep::DownloadPatch;
+  std::string patchName = patchFile.filename().string();
+  std::string url =
+      GameManager::Get()->Settings().Get<std::string>("patchRemoteUrl") +
+      "/latest/" + patchName;
+  LogManager::Info("[DownloadPatch] Downloading patch from: " + url);
+
+  patchDownloadTask = std::make_unique<DownloadTask>(
+      url,
+
+      [this, url](const std::string &content) {
+        std::ofstream outFile(patchFile, std::ios::binary);
+        if (outFile) {
+          outFile << content;
+          outFile.close();
+
+          LogManager::Info("[DownloadPatch] Downloaded and saved patch to: " +
+                           patchFile.string());
+          currentStep = InstallStep::ValidatePatch;
+          if (!ValidatePatch(patchFile)) {
+            verifyState = PatchVerifyState::Failed;
+          } else {
+            verifyState = PatchVerifyState::Passed;
+          }
+          flowState = PatchFlowState::Installed;
+          return true;
+        } else {
+          LogManager::Error("[DownloadPatch] Failed to write patch file: " +
+                            patchFile.string());
+          LogManager::Info("[DownloadPatch] You can manually download from: " +
+                           url);
+          flowState = PatchFlowState::Failed;
+          return false;
+        }
+      },
+      [this, url](const std::string errorMessage) {
+        // 下载失败回调
+        LogManager::Error("[DownloadPatch] Download failed: " + errorMessage);
+        LogManager::Info("[DownloadPatch] You can manually download from: " +
+                         url);
+        flowState = PatchFlowState::Failed;
+        return false;
+      });
+}
+
+void OInstallPatch::StartInstall() {
+  if (installing || uninstalling)
+    return;
+
+  installing = true;
+  flowState = PatchFlowState::Installing;
+
+  installThread = std::thread(&OInstallPatch::InstallWorker, this);
+}
+void OInstallPatch::StartUninstall() {
+  if (installing || uninstalling)
+    return;
+
+  uninstalling = true;
+  flowState = PatchFlowState::Installing;
+
+  uninstallThread = std::thread(&OInstallPatch::UninstallWorker, this);
+}
 void OInstallPatch::Draw() {
-  for (int i = 0; i < (int)currentStep; i++) {
-    installStepText[i]->SetColor(GREEN);
-    installStepText[i]->Draw();
-  }
-  std::vector<std::pair<InstallResult, Color>> stateColor = {
-      {InstallResult::NotStarted, WHITE},
-      {InstallResult::Installing, YELLOW},
-      {InstallResult::Failed, RED},
-      {InstallResult::Successful, GREEN},
-  };
-  for (auto &[result, color] : stateColor) {
-    if (currentResult == result)
-      installStepText[(int)currentStep]->SetColor(color);
-    break;
-  }
-  stateArrow->SetPosition(
-      {300, installStepText[(int)currentStep]->GetPosition().y});
-  installStepText[(int)currentStep]->Draw();
-  stateArrow->Draw();
-  for (int i = (int)currentStep + 1; i < installStepText.size(); i++) {
-    installStepText[i]->SetColor(WHITE);
+  for (size_t i = 0; i < installStepText.size(); ++i) {
+    Color c = WHITE;
+    InstallStep step = currentStep.load();
+    PatchFlowState state = flowState.load();
+
+    if (i < static_cast<size_t>(step))
+      c = GREEN;
+    else if (i == static_cast<size_t>(step)) {
+      switch (state) {
+      case PatchFlowState::Installing:
+        c = YELLOW;
+        break;
+      case PatchFlowState::Failed:
+        c = RED;
+        break;
+      case PatchFlowState::Installed:
+        c = GREEN;
+        break;
+      default:
+        break;
+      }
+      stateArrow->SetPosition({300, installStepText[i]->GetPosition().y});
+      stateArrow->Draw();
+    }
+
+    installStepText[i]->SetColor(c);
     installStepText[i]->Draw();
   }
 }
-bool OInstallPatch::ValidatePatch(fs::path patchFile) {
+bool OInstallPatch::ValidatePatch(const fs::path &patchFile) {
   if (patchValue->GetState() != OPatchValue::PatchValueState::Ready) {
     LogManager::Warning(
         "[DownloadPatch] Can't verify patch, patch may be broken, "
@@ -73,147 +149,147 @@ bool OInstallPatch::ValidatePatch(fs::path patchFile) {
                         "that patch is broken.");
     LogManager::Warning("[DownloadPatch] Your installation may fail.");
   }
-  return true;
+  return checkPassed;
 }
 
-bool OInstallPatch::DownloadPatch() {
-  std::string patchName = patchFile.filename().string();
-  const std::string url =
-      GameManager::Get()->Settings().Get<std::string>("patchRemoteUrl") +
-      "/latest/" + patchName;
-  LogManager::Info("[DownloadPatch] Downloading patch from: " + url);
-
-  patchDownloadTask = std::make_unique<DownloadTask>(
-      url,
-      [this, url](const std::string content) {
-        std::filesystem::create_directories(patchFile.parent_path());
-
-        std::ofstream outFile(patchFile, std::ios::binary);
-        if (outFile) {
-          outFile << content;
-          outFile.close();
-
-          LogManager::Info("[DownloadPatch] Downloaded and saved patch to: " +
-                           patchFile.string());
-          return true;
-        } else {
-          LogManager::Error("[DownloadPatch] Failed to write patch file: " +
-                            patchFile.string());
-          LogManager::Info("[DownloadPatch] You can manually download from: " +
-                           url);
-          return false;
-        }
-      },
-      [this, url](const std::string errorMessage) {
-        // 下载失败回调
-        LogManager::Error("[DownloadPatch] Download failed: " + errorMessage);
-        LogManager::Info("[DownloadPatch] You can manually download from: " +
-                         url);
-        return false;
-      });
-  return false;
+void OInstallPatch::Abort(const std::string &reason) {
+  LogManager::Error("[Install] " + reason);
+  flowState = PatchFlowState::Failed;
+  installing = false;
+  uninstalling = false;
 }
 
-bool OInstallPatch::Install() {
-  currentResult = InstallResult::Installing;
-  fs::path path = checkGamePath->GetPath();
-  OCheckGamePath::InstallMode mode = checkGamePath->GetInstallMode();
-  LogManager::Info("[Install] Start installing patch...");
-  LogManager::Info("[Install] Game path: " + path.string());
-
+void OInstallPatch::InstallWorker() {
+  currentStep = InstallStep::ValidatePatch;
   if (!fs::exists(patchFile)) {
-    currentStep = InstallStep::DownloadPatch;
-    if (!DownloadPatch()) {
-      currentResult = InstallResult::Failed;
-      return false;
-    }
+    Abort("Patch not found, please download first");
+    return;
   }
-
   if (!ValidatePatch(patchFile)) {
-    int choice = tinyfd_messageBox(
-        "Error", LangManager::GetText("Install.ShaMismatchWarning").c_str(),
-        "yesno", "warning", 1);
-    if (choice == 1) {
-      currentResult = InstallResult::Failed;
-      return false;
-    }
+    verifyState = PatchVerifyState::Failed;
+  } else {
+    verifyState = PatchVerifyState::Passed;
   }
 
-  if (mode == OCheckGamePath::InstallMode::Fresh) {
-    currentStep = InstallStep::BackupGame;
-    BackupGame(path);
+  currentStep = InstallStep::BackupGame;
+  fs::path gamePath = checkGamePath->GetPath();
+  if (BackupGame(gamePath)) {
+    LogManager::Warning("[Install] Backup failed, continuing without backup");
   }
 
   currentStep = InstallStep::ExtractPatch;
-  if (!ExtractPatch(patchFile)) {
-    currentResult = InstallResult::Failed;
-    return false;
-  }
-  currentStep = InstallStep::ApplyDelta;
-  if (!ApplyDelta(path)) {
-    currentResult = InstallResult::Failed;
-    return false;
-  }
-  currentStep = InstallStep::CopyStaticFiles;
-  if (!CopyStaticFiles(path)) {
-    currentResult = InstallResult::Failed;
-    return false;
-  }
+  if (!ExtractPatch(patchFile))
+    return Abort("Extract failed");
 
-  currentResult = InstallResult::Successful;
-  LogManager::Info("[Install] Patch installed successfully!");
-  return true;
+  currentStep = InstallStep::ApplyDelta;
+  if (!ApplyDelta(gamePath))
+    return Abort("Delta failed");
+
+  currentStep = InstallStep::CopyStaticFiles;
+  if (!CopyStaticFiles(gamePath))
+    return Abort("Copy failed");
+
+  currentStep = InstallStep::Finished;
+  flowState = PatchFlowState::Installed;
+  installing = false;
 }
 
-bool OInstallPatch::BackupGame(fs::path gamePath) {
-  bool hasError = false;
-  LogManager::Info("[Install] Backing up game files...");
+void OInstallPatch::UninstallWorker() {
+  fs::path gamePath = checkGamePath->GetPath();
+  fs::path backupPath = gamePath / "backup";
+  if (!fs::exists(backupPath))
+    return Abort("Uninstall failed: backup folder doesn't exist.");
+  if (!BackupGame(gamePath, true))
+    return Abort("Uninstall failed: backup is broken.");
+  flowState = PatchFlowState::Idle;
+  uninstalling = false;
+}
 
-  std::vector<std::string> fileList =
+bool OInstallPatch::BackupGame(const fs::path &gamePath, bool uninstall) {
+  LogManager::Info(uninstall ? "[Uninstall] Restoring game files..."
+                             : "[Install] Backing up game files...");
+
+  const auto fileList =
       GameManager::Get()->Settings().Get<std::vector<std::string>>(
           "backupFiles");
-  fs::path backupPath = gamePath / "backup";
-  fs::create_directories(backupPath);
 
-  try {
-    for (auto &file : fileList) {
-      fs::create_directories((backupPath / file).parent_path());
-      fs::copy_file(gamePath / file, backupPath / file);
-    }
-  } catch (const std::exception &e) {
-    hasError = true;
-    LogManager::Warning(std::string("Backup failed: ") + e.what());
+  fs::path src = uninstall ? (gamePath / "backup") : gamePath;
+  fs::path dst = uninstall ? gamePath : (gamePath / "backup");
+
+  if (!uninstall) {
+    fs::remove_all(dst);
+    fs::create_directories(dst);
   }
 
-  LogManager::Info("[Install] Backup finished.");
-  return hasError;
+  bool success = true;
+
+  for (const auto &file : fileList) {
+    try {
+      fs::path srcFile = src / file;
+      fs::path dstFile = dst / file;
+
+      if (!fs::exists(srcFile)) {
+        LogManager::Warning("[Backup] Missing file: " + srcFile.string());
+        success = false;
+        continue;
+      }
+
+      fs::create_directories(dstFile.parent_path());
+      fs::copy_file(srcFile, dstFile, fs::copy_options::overwrite_existing);
+    } catch (const std::exception &e) {
+      success = false;
+      LogManager::Warning("[Backup] Failed for " + file + ": " + e.what());
+    }
+  }
+
+  if (uninstall && success) {
+    fs::remove_all(src);
+    LogManager::Info("[Uninstall] Backup removed.");
+  }
+
+  LogManager::Info(success ? "[Backup] Finished successfully."
+                           : "[Backup] Finished with warnings.");
+
+  return success;
 }
 
-bool OInstallPatch::ExtractPatch(fs::path patchFile) {
+bool OInstallPatch::ExtractPatch(const fs::path &patchFile) {
   LogManager::Info("[Install] Extracting patch to temp directory...");
   fs::remove_all(tempDir);
   fs::create_directories(tempDir);
   fs::path sevenZip;
 #ifdef _WIN32
-  sevenZip = fs::path("external/win/7z.exe");
+  sevenZip = fs::current_path() / "external/win/7z.exe";
 #else
-  sevenZip = fs::path("external/linux/7z");
+  sevenZip = fs::current_path() / "external/linux/7z";
 #endif
 
+  fs::path errLog = tempDir / "err-7z.log";
   if (!fs::exists(patchFile)) {
     LogManager::Error("[Install] Patch archive not found: " +
                       patchFile.string());
     return false;
   }
 
-  std::string cmd = "\"" + sevenZip.string() + "\" x \"" + patchFile.string() +
-                    "\" -o\"" + tempDir.string() + "\" -y";
-  LogManager::Info(cmd);
+  std::string cmd = GameUtil::ConvertPath(sevenZip) + " x \"" +
+                    GameUtil::ConvertPath(patchFile) + "\" -o" +
+                    GameUtil::ConvertPath(tempDir) + " 2> \"" +
+                    GameUtil::ConvertPath(errLog) + "\"";
 
+  LogManager::Info("7z execute command: " + cmd);
   int ret = std::system(cmd.c_str());
   if (ret != 0) {
-    LogManager::Error("[Install] Failed to extract patch, code=" +
-                      std::to_string(ret));
+    std::string err;
+    if (fs::exists(errLog)) {
+      std::ifstream in(errLog);
+      err.assign(std::istreambuf_iterator<char>(in),
+                 std::istreambuf_iterator<char>());
+    }
+
+    LogManager::Error("[Install] 7z failed, code=" + std::to_string(ret));
+    if (!err.empty()) {
+      LogManager::Error("[7z stderr]\n" + err);
+    }
     return false;
   }
 
@@ -221,37 +297,51 @@ bool OInstallPatch::ExtractPatch(fs::path patchFile) {
   return true;
 }
 
-bool OInstallPatch::ApplyDelta(fs::path gamePath) {
+bool OInstallPatch::ApplyDelta(const fs::path &gamePath) {
   LogManager::Info("[Install] Applying delta patches...");
   fs::path xDelta3;
 #ifdef _WIN32
-  xDelta3 = fs::path("external/win/xdelta3.exe");
+  xDelta3 = fs::current_path() / "external/win/xdelta3.exe";
 #else
-  xDelta3 = fs::path("external/linux/xdelta3");
+  xDelta3 = fs::current_path() / "external/linux/xdelta3";
 #endif
 
   auto deltaList =
-      GameManager::Get()->Settings().Get<nlohmann::json>("patchFileDelta");
+      GameManager::Get()->Settings().Get<nlohmann::json>("patchFileXDelta");
+  fs::path errLog = tempDir / "err-xdelta.log";
 
   try {
     for (auto &[key, value] : deltaList.items()) {
-      fs::path deltaPath = tempDir / key;
-      fs::path oldFile = gamePath / "backup" / value;
-      fs::path newFile = gamePath / value;
+      fs::path oldFile = gamePath / "backup" / key;
+      fs::path newFile = gamePath / key;
+      fs::path deltaPath = tempDir / value;
 
       if (!fs::exists(deltaPath) || !fs::exists(oldFile)) {
         LogManager::Error("[Install] Missing delta input: " + key);
         return false;
       }
-
-      std::string cmd = xDelta3.string() + " -d -s \"" + oldFile.string() +
-                        "\" \"" + deltaPath.string() + "\" \"" +
-                        newFile.string() + "\"";
+      if (fs::exists(newFile))
+        fs::remove(newFile);
+      std::string cmd = GameUtil::ConvertPath(xDelta3) + " -d -s \"" +
+                        GameUtil::ConvertPath(oldFile) + "\" \"" +
+                        GameUtil::ConvertPath(deltaPath) + "\" \"" +
+                        GameUtil::ConvertPath(newFile) + "\" 2> \"" +
+                        GameUtil::ConvertPath(errLog) + "\"";
 
       int ret = std::system(cmd.c_str());
       if (ret != 0) {
-        LogManager::Error("[Install] xdelta failed for: " + key +
+        std::string err;
+        if (fs::exists(errLog)) {
+          std::ifstream in(errLog);
+          err.assign(std::istreambuf_iterator<char>(in),
+                     std::istreambuf_iterator<char>());
+        }
+
+        LogManager::Error("[Install] xdelta failed for: " + std::string(value) +
                           ", code=" + std::to_string(ret));
+        if (!err.empty()) {
+          LogManager::Error("[xdelta stderr]\n" + err);
+        }
         return false;
       }
     }
@@ -265,7 +355,7 @@ bool OInstallPatch::ApplyDelta(fs::path gamePath) {
   return true;
 }
 
-bool OInstallPatch::CopyStaticFiles(fs::path gamePath) {
+bool OInstallPatch::CopyStaticFiles(const fs::path &gamePath) {
   LogManager::Info("[Install] Copying patched files to game directory...");
   auto staticFileList =
       GameManager::Get()->Settings().Get<std::vector<std::string>>(
@@ -288,7 +378,6 @@ bool OInstallPatch::CopyStaticFiles(fs::path gamePath) {
     LogManager::Error("[Install] Copy failed: " + std::string(e.what()));
     return false;
   }
-
   LogManager::Info("[Install] Files copied successfully.");
   return true;
 }

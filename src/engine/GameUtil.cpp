@@ -36,6 +36,15 @@ std::string GameUtil::CalcFileSha256(const std::string &path) {
   return outHex;
 }
 
+std::string GameUtil::ConvertPath(const std::filesystem::path &p) {
+#ifdef _WIN32
+  std::filesystem::path newPath = p;
+  return newPath.make_preferred().string();
+#else
+  return p.string();
+#endif
+}
+
 #ifdef _WIN32
 std::string GameUtil::GetRegValue(HKEY hKey, const std::string &subKey,
                                   const std::string &value) {

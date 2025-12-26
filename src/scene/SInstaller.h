@@ -36,6 +36,7 @@ private:
   std::vector<GameObject *> aboutPage;
 
   BOButton *installPatchButton{nullptr};
+  BOButton *downloadPatchButton{nullptr};
 
   void SwitchPage(Page page);
 

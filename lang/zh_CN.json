@@ -20,6 +20,18 @@
         "NotFound": "（未找到说明文件。）",
         "Contact": "如果遇到了报错，且阅读说明后\n仍未解决问题，可通过以下方式获得帮助：\nB站：@好人汉化组，答疑群：{QQ_GROUP_CODE}"
     },
+    "Patch": {
+        "DownloadPatch": "下载最新补丁",
+        "InstallPatch": "安装汉化补丁"
+    },
+    "InstallStep": {
+        "DownloadPatch": "下载汉化补丁",
+        "ValidatePatch": "校验补丁完整性",
+        "BackupGame": "备份原文件",
+        "ExtractPatch": "解压汉化补丁",
+        "ApplyDelta": "修补游戏本体",
+        "CopyStaticFiles": "复制语言包"
+    },
     "GamePath": {
         "Label": "游戏安装目录：",
         "Placeholder": "请选择 DELTARUNE 游戏安装路径",

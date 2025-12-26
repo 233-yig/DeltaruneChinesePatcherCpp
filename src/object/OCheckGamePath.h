@@ -8,13 +8,13 @@
 
 class OCheckGamePath : public GameObject {
 public:
-  OCheckGamePath(OPatchValue*);
+  OCheckGamePath(OPatchValue *);
   enum class PathState {
-    InvalidPatchValueNotReady,
+    NeedPatchValue,
     InvalidNotFound,
     InvalidShaMismatch,
-    Valid,
-    ValidButNoACF
+    ValidFresh,
+    ValidUpdate
   };
   enum class InstallMode { Fresh, Update, Invalid };
   void Start();
@@ -32,19 +32,18 @@ public:
 private:
   void TriggerSuccess(const std::string &msg, const std::string &path);
   void TriggerError(const std::string &msg);
-  PathState
-  ValidatePath(const std::string &path);
+  PathState ValidatePath(const std::string &path);
   std::string AutoDetectPath();
-  void HandleValidateResult(const std::string& path);
+  void HandleValidateResult(const std::string &path);
 
-  static std::string PathStateToMsg(PathState st) {
+  std::string PathStateToMsg(PathState st) {
     switch (st) {
-    case PathState::InvalidPatchValueNotReady:
-      return "GamePath.ValueNotReady";
-    case PathState::Valid:
-      return "GamePath.Valid";
-    case PathState::ValidButNoACF:
-      return "GamePath.ValidButNoACF";
+    case PathState::NeedPatchValue:
+      return "GamePath.NeedPatchValue";
+    case PathState::ValidFresh:
+      return hasACF ? "GamePath.Valid" : "GamePath.ValidNoACF";
+    case PathState::ValidUpdate:
+      return hasACF ? "GamePath.ValidUpdate" : "GamePath.ValidUpdateNoACF";
     case PathState::InvalidNotFound:
       return "GamePath.InvalidNotFound";
     case PathState::InvalidShaMismatch:
@@ -60,7 +59,8 @@ private:
   bool pendingAuto = false;
   std::string stateMessage;
   InstallMode currentMode;
-  OPatchValue* patchValue = nullptr;
+  OPatchValue *patchValue = nullptr;
+  bool hasACF = false;
 };
 
 #endif
