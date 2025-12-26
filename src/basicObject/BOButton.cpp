@@ -11,7 +11,7 @@ BOButton::BOButton(const std::string &langKey, Vector2 position, Vector2 size,
   for (int i = 0; i < 4; ++i) {
     textures[i] = LoadTexture(TEXTURE_PATHS[i]);
     if (textures[i].id == 0) {
-      LogManager::Error(std::string("[Button] Failed to load button texture: ") + TEXTURE_PATHS[i]);
+      LogManager::Warning(std::string("[Button] Failed to load button texture: ") + TEXTURE_PATHS[i]);
     }
   }
 

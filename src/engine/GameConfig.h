@@ -17,7 +17,7 @@ public:
   template <typename T> T Get(const std::string &key) const {
     nlohmann::json result = GetJson(key);
     if (result == nullptr) {
-      LogManager::Error("Can't find key " + key + " in " + filePath);
+      LogManager::Warning("Can't find key " + key + " in " + filePath);
       return T{};
     }
     return result.get<T>();

@@ -11,6 +11,7 @@ public:
   OInstallPatch(OPatchValue *, OCheckGamePath *);
   enum class InstallStep {
     NotStarted,
+    DownloadPatch,
     BackupGame,
     ExtractPatch,
     ApplyDelta,
@@ -22,10 +23,11 @@ public:
 
 private:
   bool BackupGame(fs::path);
-  bool ExtractPatch(fs::path);
+  bool DownloadPatch();
+  bool ExtractPatch(fs::path, fs::path);
   bool ApplyDelta(fs::path);
   bool CopyStaticFiles(fs::path);
-
+  bool ValidatePatch(fs::path);
   bool RunExternalTool(const std::string &cmd, const std::string &args);
 
   void Abort(const std::string &reason);
@@ -33,8 +35,10 @@ private:
 private:
   OPatchValue *patchValue;
   OCheckGamePath *checkGamePath;
-  const fs::path tempDir = fs::path("temp");
+  const fs::path tempDir;
+  const fs::path patchFile;
   InstallStep currentStep = InstallStep::NotStarted;
+  std::unique_ptr<DownloadTask> patchDownloadTask = nullptr;
 };
 
 #endif

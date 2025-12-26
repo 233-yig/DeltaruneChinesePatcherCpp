@@ -8,8 +8,7 @@
 #include "../engine/LogManager.h"
 #include "../object/OCheckGamePath.h"
 #include "../object/OPatchValue.h"
-
-#include <nfd.hpp>
+#include "tinyfiledialogs.h"
 
 SInstaller::SInstaller() {
   int mainFontSize = LangManager::GetFont().baseSize;
@@ -53,14 +52,13 @@ SInstaller::SInstaller() {
       gamePathState,
       new BOButton("GamePath.Browse", {290, 150}, {240, 80},
                    [this]() {
-                     NFD::UniquePath outPath;
-                     nfdresult_t result = NFD::PickFolder(outPath);
+                     std::string result = tinyfd_selectFolderDialog(
+                         LangManager::GetText("MsgBox.SelectFolder").c_str(),
+                         ".");
 
-                     if (result == NFD_OKAY) {
-                       std::string path = outPath.get();
-
-                       gamePathInput->SetText(path);
-                       gamePathDetector->SetPath(path);
+                     if (result != "") {
+                       gamePathInput->SetText(result);
+                       gamePathDetector->SetPath(result);
                      }
                    }),
   };

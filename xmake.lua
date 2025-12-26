@@ -3,7 +3,6 @@ add_requires(
     "cpr",
     "nlohmann_json",
     "picosha2",
-    "nativefiledialog-extended",
     "tinyfiledialogs"
 )
 
@@ -23,7 +22,6 @@ target("deltarune_cnpatcher")
         "nlohmann_json",
         "cpr",
         "picosha2",
-        "nativefiledialog-extended",
         "tinyfiledialogs"
     )
 

@@ -76,11 +76,11 @@ bool OPatchValue::Download() {
           LogManager::Info("[PatchValue] Patch value loaded successfully.");
           currentState = PatchValueState::Ready;
         } else {
-          LogManager::Error("[PatchValue] Failed to parse downloaded file.");
+          LogManager::Warning("[PatchValue] Failed to parse downloaded file.");
           currentState = PatchValueState::Failed;
         }
       } else {
-        LogManager::Error("[PatchValue] Failed to write file: " +
+        LogManager::Warning("[PatchValue] Failed to write file: " +
                           filePath.string());
         LogManager::Warning("[PatchValue] Patch validation will be skipped.");
         LogManager::Info("[PatchValue] You can manually download from: " +
@@ -97,7 +97,7 @@ bool OPatchValue::Download() {
           fs::path("patch") /
           ("value-" + GameManager::Get()->GetCurrentLanguage() + ".json");
 
-      LogManager::Error("[PatchValue] Download failed: " + errorMessage);
+      LogManager::Warning("[PatchValue] Download failed: " + errorMessage);
       LogManager::Warning("[PatchValue] Patch validation will be skipped.");
       LogManager::Info("[PatchValue] You can manually download from: " + url);
       LogManager::Info("[PatchValue] And place it at: " + filePath.string());
@@ -105,7 +105,7 @@ bool OPatchValue::Download() {
     }
   );
   if(!downloadTask){
-    LogManager::Error("[PatchValue] Failed to create download task.");
+    LogManager::Warning("[PatchValue] Failed to create download task.");
     currentState = PatchValueState::Failed;
     return false;
   }

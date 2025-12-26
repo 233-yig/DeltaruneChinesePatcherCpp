@@ -1,14 +1,83 @@
 ﻿#include "OInstallPatch.h"
 #include "../engine/GameManager.h"
+#include "../engine/GameUtil.h"
+#include "../engine/LangManager.h"
 #include "OCheckGamePath.h"
 #include "OPatchValue.h"
+#include "tinyfiledialogs.h"
 #include <filesystem>
+#include <fstream>
+#include <memory>
 #include <vector>
 
 OInstallPatch::OInstallPatch(OPatchValue *pv, OCheckGamePath *cgp)
-    : patchValue(pv), checkGamePath(cgp) {}
+    : patchValue(pv), checkGamePath(cgp), tempDir(fs::path("temp")),
+      patchFile(fs::path("patch") /
+                ("patch-" + GameManager::Get()->GetCurrentLanguage() + ".7z")) {
+}
 OInstallPatch::InstallStep OInstallPatch::GetCurrentStep() {
   return currentStep;
+}
+
+bool OInstallPatch::ValidatePatch(fs::path patchFile) {
+  if (patchValue->GetState() != OPatchValue::PatchValueState::Ready) {
+    LogManager::Warning(
+        "[DownloadPatch] Can't verify patch, patch may be broken, "
+        "continue at your risk.");
+    return false;
+  }
+  std::string expectedHash = patchValue->GetValue("patchSha256sum");
+  bool checkPassed =
+      GameUtil::CalcFileSha256(patchFile.string()) == expectedHash;
+  if (checkPassed) {
+    LogManager::Info("[DownloadPatch] Patch is valid: Version " +
+                     patchValue->GetValue("patchVersion"));
+    LogManager::Info("[DownloadPatch] Patch build time: " +
+                     patchValue->GetValue("patchBuildTime"));
+  } else {
+    LogManager::Warning("[DownloadPatch] Patch check failed! It's likely "
+                        "that patch is broken.");
+    LogManager::Warning("[DownloadPatch] Your installation may fail.");
+  }
+  return true;
+}
+
+bool OInstallPatch::DownloadPatch() {
+  std::string patchName = patchFile.filename().string();
+  const std::string url =
+      GameManager::Get()->Settings().Get<std::string>("patchRemoteUrl") +
+      "/latest/" + patchName;
+  LogManager::Info("[DownloadPatch] Downloading patch from: " + url);
+
+  patchDownloadTask = std::make_unique<DownloadTask>(
+      url,
+      [this, url](const std::string content) {
+        std::filesystem::create_directories(patchFile.parent_path());
+
+        std::ofstream outFile(patchFile, std::ios::binary);
+        if (outFile) {
+          outFile << content;
+          outFile.close();
+
+          LogManager::Info("[DownloadPatch] Downloaded and saved patch to: " +
+                           patchFile.string());
+          return true;
+        } else {
+          LogManager::Error("[DownloadPatch] Failed to write patch file: " +
+                            patchFile.string());
+          LogManager::Info("[DownloadPatch] You can manually download from: " +
+                           url);
+          return false;
+        }
+      },
+      [this, url](const std::string errorMessage) {
+        // 下载失败回调
+        LogManager::Error("[DownloadPatch] Download failed: " + errorMessage);
+        LogManager::Info("[DownloadPatch] You can manually download from: " +
+                         url);
+        return false;
+      });
+  return false;
 }
 
 bool OInstallPatch::Install() {
@@ -18,13 +87,29 @@ bool OInstallPatch::Install() {
   LogManager::Info("[Install] Start installing patch...");
   LogManager::Info("[Install] Game path: " + path.string());
 
+  if (fs::exists(patchFile)) {
+    currentStep = InstallStep::DownloadPatch;
+    if (!DownloadPatch()) {
+      return false;
+    }
+  }
+
+  if (!ValidatePatch(patchFile)) {
+    int choice = tinyfd_messageBox(
+        "Error", LangManager::GetText("Install.ShaMismatchWarning").c_str(),
+        "yesno", "warning", 1);
+    if (choice == 1) {
+      return false;
+    }
+  }
+
   if (mode == OCheckGamePath::InstallMode::Fresh) {
     currentStep = InstallStep::BackupGame;
     BackupGame(path);
   }
 
   currentStep = InstallStep::ExtractPatch;
-  if (!ExtractPatch(path))
+  if (!ExtractPatch(path, patchFile))
     return false;
   currentStep = InstallStep::ApplyDelta;
   if (!ApplyDelta(path))
@@ -62,12 +147,10 @@ bool OInstallPatch::BackupGame(fs::path gamePath) {
   return hasError;
 }
 
-bool OInstallPatch::ExtractPatch(fs::path gamePath) {
+bool OInstallPatch::ExtractPatch(fs::path patchFile, fs::path gamePath) {
   LogManager::Info("[Install] Extracting patch to temp directory...");
   fs::remove_all(tempDir);
   fs::create_directories(tempDir);
-
-  fs::path patchArchive = fs::path("patch") / "patch.7z";
   fs::path sevenZip;
 #ifdef _WIN32
   sevenZip = fs::path("external/win/7z.exe");
@@ -75,13 +158,13 @@ bool OInstallPatch::ExtractPatch(fs::path gamePath) {
   sevenZip = fs::path("external/linux/7z");
 #endif
 
-  if (!fs::exists(patchArchive)) {
+  if (!fs::exists(patchFile)) {
     LogManager::Error("[Install] Patch archive not found: " +
-                      patchArchive.string());
+                      patchFile.string());
     return false;
   }
 
-  std::string cmd = sevenZip.string() + " x \"" + patchArchive.string() +
+  std::string cmd = sevenZip.string() + " x \"" + patchFile.string() +
                     "\" -o\"" + tempDir.string() + "\" -y";
 
   int ret = std::system(cmd.c_str());

@@ -6,7 +6,7 @@ BOImage::BOImage(std::string path, Vector2 pos, Vector2 siz, Color color)
   texture = LoadTexture(path.c_str());
 
   if (texture.id == 0) {
-    LogManager::Error("[Image] Failed to load texture: " + path);
+    LogManager::Warning("[Image] Failed to load texture: " + path);
     size = {0, 0};
     return;
   }
@@ -21,7 +21,7 @@ BOImage::BOImage(std::string path, Vector2 pos, int frames, float duration,
   texture = LoadTexture(path.c_str());
 
   if (texture.id == 0) {
-    LogManager::Error("[Image] Failed to load texture: " + path);
+    LogManager::Warning("[Image] Failed to load texture: " + path);
     frameHeight = 0;
     size = {0, 0};
     return;
