@@ -1,0 +1,59 @@
+﻿{
+    "Meta": {
+        "Title": "DELTARUNE 汉化安装程序",
+        "TitleShort": "DR汉化安装程序",
+        "LanguageName": "简体中文"
+    },
+    "Button": {
+        "Readme": "装前必读",
+        "Patch": "安装汉化",
+        "About": "关于软件"
+    },
+    "About": {
+        "Info": "DELTARUNE 汉化安装程序 C++ 版 \n版本号：{VERSION}  图形库：Raylib\n\n设置 DELTARUNE Steam 版安装目录\n安装程序会自动为每个章节的 data 安装补丁",
+        "ContribTitle": "贡献者：",
+        "ContribList": "ws3917 - 编写安装程序代码\n憨憨羊の宇航鸽鸽 - Godot版安装程序参考\nWhatDamon - 汉化安装程序图标\n好人汉化组 - DELTARUNE 中文本地化",
+        "Github": "此安装程序已在 Github 上开源\n点击打开 Github 仓库"
+    },
+    "Readme": {
+        "Title": "安装汉化前，请务必仔细阅读\n下面的说明！",
+        "NotFound": "（未找到说明文件。）",
+        "Contact": "如果遇到了报错，且阅读说明后\n仍未解决问题，可通过以下方式获得帮助：\nB站：@好人汉化组，答疑群：{QQ_GROUP_CODE}"
+    },
+    "GamePath": {
+        "Label": "游戏安装目录：",
+        "Placeholder": "请选择 DELTARUNE 游戏安装路径",
+        "Detected": "自动获取游戏路径成功",
+        "NotDetected": "自动获取游戏路径失败，请手动选择路径",
+        "Valid": "路径有效",
+        "ValidButNoACF": "路径有效，但所选游戏可能不是正版。",
+        "InvalidNotFound": "不是《三角符文》游戏路径，请重选。",
+        "InvalidShaMismatch": "不是最新原版游戏，请到 Steam 检验游戏完整性。",
+        "ValueNotReady": "正在获取版本校验信息，请稍候再试。",
+        "Browse": "选择游戏目录"
+    },
+    "Error": {
+        "VersionJsonDownloadFailed": "下载 version.json 失败",
+        "PatchDownloadFailed": "下载补丁文件失败",
+        "PatchSha256Mismatch": "补丁文件 SHA256 不匹配",
+        "ToolNotFound": "工具文件未找到",
+        "ToolSha256Mismatch": "工具 SHA256 校验失败",
+        "GamePathEmpty": "游戏路径未设置",
+        "GameExeNotFound": "未找到 DELTARUNE.exe",
+        "GameDataNotFound": "未找到 data.win",
+        "GameDataSha256Mismatch": "不支持的游戏版本",
+        "Unknown": "未知错误"
+    },
+    "Guidance": {
+        "VersionJsonDownloadFailed": "请检查网络连接或补丁远程 URL",
+        "PatchDownloadFailed": "请检查网络连接或稍后重试",
+        "PatchSha256Mismatch": "请重新下载补丁文件或检查文件完整性",
+        "ToolNotFound": "请确保 7z 和 xdelta3 工具在 external/ 目录中",
+        "ToolSha256Mismatch": "请重新解压安装程序或检查文件是否损坏",
+        "GamePathEmpty": "请选择您的 DELTARUNE 游戏安装目录",
+        "GameExeNotFound": "选择的目录不包含 DELTARUNE.exe",
+        "GameDataNotFound": "在选择的目录中未找到 data.win",
+        "GameDataSha256Mismatch": "您的游戏版本可能不被支持。请在 Steam 中验证游戏文件",
+        "Unknown": "请查看日志获取详细信息"
+    }
+}
