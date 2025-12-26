@@ -27,7 +27,7 @@ SInstaller::SInstaller() {
       new BOText("Meta.LanguageName", {120, 620}, WHITE, true, smallFontSize);
   currentGamePath = new BOText("", {290, 60}, WHITE, false, smallFontSize);
   gamePathState = new BOText("", {290, 100}, YELLOW, false, smallFontSize);
-  browsePathButton = new BOButton("GamePath.Browse", {290, 150}, {200, 80}),
+  browsePathButton = new BOButton("Patch.BrowseGamePath", {290, 150}, {200, 80}),
   downloadPatchButton =
       new BOButton("Patch.DownloadPatch", {290, 300}, {200, 80});
   installPatchButton =

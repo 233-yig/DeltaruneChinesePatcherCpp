@@ -14,6 +14,8 @@ OReadme::OReadme() {
   std::string filename = FindReadmeFile();
   std::string content = LoadReadmeContent(filename);
 
+  if (content == "") content = "Readme.NotFound";
+
   readmeText = new BOScrollText(content, {280, 150, 630, 450}, WHITE,
                                 LangManager::GetFont().baseSize * 3 / 4);
 }

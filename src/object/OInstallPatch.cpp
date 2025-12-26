@@ -17,7 +17,10 @@ OInstallPatch::OInstallPatch(OPatchValue *pv, OCheckGamePath *cgp)
                 ("patch-" + GameManager::Get()->GetCurrentLanguage() + ".7z")) {
 
   stateArrow = new BOText("->", {300, 480}, YELLOW);
-
+  warningType = new BOText("", {300, 220}, YELLOW);
+  warningGuidance = new BOText("", {300, 260}, WHITE);
+  errorType = new BOText("", {300, 320}, RED);
+  errorGuidance = new BOText("", {300, 360}, WHITE);
   installStepText = {
       new BOText("InstallStep.DownloadPatch", {350, 460}, WHITE),
       new BOText("InstallStep.ValidatePatch", {350, 495}, WHITE),
@@ -28,7 +31,16 @@ OInstallPatch::OInstallPatch(OPatchValue *pv, OCheckGamePath *cgp)
   };
 }
 
-OInstallPatch::~OInstallPatch() { patchDownloadTask->Cancel(); }
+OInstallPatch::~OInstallPatch() {
+  installing = false;
+  uninstalling = false;
+
+  if (installThread.joinable())
+    installThread.join();
+
+  if (uninstallThread.joinable())
+    uninstallThread.join();
+}
 void OInstallPatch::StartDownload() {
   if (flowState != PatchFlowState::Idle)
     return;
@@ -103,6 +115,15 @@ void OInstallPatch::StartUninstall() {
   uninstallThread = std::thread(&OInstallPatch::UninstallWorker, this);
 }
 void OInstallPatch::Draw() {
+  if (hasError) {
+    errorType->SetText("Error." + errorKey);
+    errorGuidance->SetText("ErrorGuidance." + errorKey);
+    errorType->Draw();
+    errorGuidance->Draw();
+  }
+
+  warningGuidance->Draw();
+  warningType->Draw();
   for (size_t i = 0; i < installStepText.size(); ++i) {
     Color c = WHITE;
     InstallStep step = currentStep.load();
@@ -134,9 +155,9 @@ void OInstallPatch::Draw() {
 }
 bool OInstallPatch::ValidatePatch(const fs::path &patchFile) {
   if (patchValue->GetState() != OPatchValue::PatchValueState::Ready) {
-    LogManager::Warning(
-        "[DownloadPatch] Can't verify patch, patch may be broken, "
-        "continue at your risk.");
+    Warning("[DownloadPatch] Can't verify patch, patch may be broken, "
+            "continue at your risk.",
+            "PatchValidationFailed");
     return false;
   }
   std::string expectedHash = patchValue->GetValue("patchSha256sum");
@@ -148,24 +169,43 @@ bool OInstallPatch::ValidatePatch(const fs::path &patchFile) {
     LogManager::Info("[DownloadPatch] Patch build time: " +
                      patchValue->GetValue("patchBuildTime"));
   } else {
-    LogManager::Warning("[DownloadPatch] Patch check failed! It's likely "
-                        "that patch is broken.");
-    LogManager::Warning("[DownloadPatch] Your installation may fail.");
+    Warning("[DownloadPatch] Patch check failed! It's likely "
+            "that patch is broken, and your installation may fail.",
+            "PatchValidationFailed");
   }
   return checkPassed;
 }
 
-void OInstallPatch::Abort(const std::string &reason) {
+void OInstallPatch::Abort(const std::string &reason,
+                          const std::string &uiLangKey) {
   LogManager::Error("[Install] " + reason);
+  {
+    std::lock_guard lock(uiMsgMutex);
+    errorKey = uiLangKey;
+    hasError = true;
+  }
+
   flowState = PatchFlowState::Failed;
   installing = false;
   uninstalling = false;
 }
 
+void OInstallPatch::Warning(const std::string &reason,
+                            const std::string &uiLangKey) {
+  LogManager::Warning("[Install] " + reason);
+  std::lock_guard lock(uiMsgMutex);
+  warningKey = uiLangKey;
+  hasWarning = true;
+}
+
 void OInstallPatch::InstallWorker() {
+  hasError = false;
+  hasWarning = false;
+  errorKey.clear();
+  warningKey.clear();
   currentStep = InstallStep::ValidatePatch;
   if (!fs::exists(patchFile)) {
-    Abort("Patch not found, please download first");
+    Abort("Patch not found, please download first", "PatchNotFound");
     return;
   }
   if (!ValidatePatch(patchFile)) {
@@ -177,20 +217,21 @@ void OInstallPatch::InstallWorker() {
   currentStep = InstallStep::BackupGame;
   fs::path gamePath = checkGamePath->GetPath();
   if (BackupGame(gamePath)) {
-    LogManager::Warning("[Install] Backup failed, continuing without backup");
+    Warning("[Install] Backup failed, continuing without backup",
+            "BackupFailed");
   }
 
   currentStep = InstallStep::ExtractPatch;
   if (!ExtractPatch(patchFile))
-    return Abort("Extract failed");
+    return Abort("Extract failed", "PatchExtractFailed");
 
   currentStep = InstallStep::ApplyDelta;
   if (!ApplyDelta(gamePath))
-    return Abort("Delta failed");
+    return Abort("Delta failed", "DeltaApplyFailed");
 
   currentStep = InstallStep::CopyStaticFiles;
   if (!CopyStaticFiles(gamePath))
-    return Abort("Copy failed");
+    return Abort("Copy failed", "StaticFileCopyFailed");
 
   currentStep = InstallStep::Finished;
   flowState = PatchFlowState::Installed;
@@ -198,12 +239,17 @@ void OInstallPatch::InstallWorker() {
 }
 
 void OInstallPatch::UninstallWorker() {
+  hasError = false;
+  hasWarning = false;
+  errorKey.clear();
+  warningKey.clear();
   fs::path gamePath = checkGamePath->GetPath();
   fs::path backupPath = gamePath / "backup";
   if (!fs::exists(backupPath))
-    return Abort("Uninstall failed: backup folder doesn't exist.");
+    return Abort("Uninstall failed: backup folder doesn't exist.",
+                 "BackupFolderMissing");
   if (!BackupGame(gamePath, true))
-    return Abort("Uninstall failed: backup is broken.");
+    return Abort("Uninstall failed: backup is broken.", "BackupRestoreFailed");
   currentStep = InstallStep::DownloadPatch;
   flowState = PatchFlowState::Idle;
   uninstalling = false;
@@ -259,7 +305,6 @@ bool OInstallPatch::BackupGame(const fs::path &gamePath, bool uninstall) {
 
 bool OInstallPatch::ExtractPatch(const fs::path &patchFile) {
   LogManager::Info("[Install] Extracting patch to temp directory...");
-  fs::remove_all(tempDir);
   fs::create_directories(tempDir);
   fs::path sevenZip;
 #ifdef _WIN32
@@ -277,7 +322,7 @@ bool OInstallPatch::ExtractPatch(const fs::path &patchFile) {
 
   std::string cmd = GameUtil::ConvertPath(sevenZip) + " x \"" +
                     GameUtil::ConvertPath(patchFile) + "\" -o" +
-                    GameUtil::ConvertPath(tempDir) + " 2> \"" +
+                    GameUtil::ConvertPath(tempDir) + " -aoa 2> \"" +
                     GameUtil::ConvertPath(errLog) + "\"";
 
   LogManager::Info("7z execute command: " + cmd);

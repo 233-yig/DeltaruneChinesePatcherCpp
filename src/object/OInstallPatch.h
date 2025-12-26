@@ -52,7 +52,8 @@ private:
   bool CopyStaticFiles(const fs::path &);
   bool ValidatePatch(const fs::path &);
 
-  void Abort(const std::string &reason);
+  void Abort(const std::string &reason, const std::string &uiLangKey);
+  void Warning(const std::string &reason, const std::string &uiLangKey);
 
 private:
   OPatchValue *patchValue;
@@ -73,10 +74,19 @@ private:
   std::thread uninstallThread;
   std::atomic_bool installing{false};
   std::atomic_bool uninstalling{false};
+  std::string errorKey;
+  std::string warningKey;
+  std::atomic_bool hasWarning{false};
+  std::atomic_bool hasError{false};
+  std::mutex uiMsgMutex;
 
   // === UI ===
   std::vector<BOText *> installStepText;
   BOText *stateArrow;
+  BOText *errorType;
+  BOText *errorGuidance;
+  BOText *warningType;
+  BOText *warningGuidance;
 };
 
 #endif

@@ -41,7 +41,7 @@ private:
     case PathState::NeedPatchValue:
       return "GamePath.NeedPatchValue";
     case PathState::ValidFresh:
-      return hasACF ? "GamePath.Valid" : "GamePath.ValidNoACF";
+      return hasACF ? "GamePath.ValidFresh" : "GamePath.ValidFreshNoACF";
     case PathState::ValidUpdate:
       return hasACF ? "GamePath.ValidUpdate" : "GamePath.ValidUpdateNoACF";
     case PathState::InvalidNotFound:
