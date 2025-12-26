@@ -2,7 +2,7 @@
 #include "../engine/LangManager.h"
 
 BOText::BOText(const std::string &key, Vector2 p, Color c, bool center, int siz,
-             float a)
+               float a)
     : langKey(key), pos(p), color(c), alpha(a), centered(center) {
 
   if (siz == DEFAULT_FONT_SIZE) {
@@ -51,6 +51,8 @@ void BOText::SetPosition(Vector2 p) {
   pos = p;
   RefreshText();
 }
+
+Vector2 BOText::GetPosition() const { return pos; }
 
 void BOText::SetColor(Color c) { color = c; }
 

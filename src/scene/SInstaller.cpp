@@ -7,6 +7,7 @@
 #include "../engine/LangManager.h"
 #include "../engine/LogManager.h"
 #include "../object/OCheckGamePath.h"
+#include "../object/OInstallPatch.h"
 #include "../object/OPatchValue.h"
 #include "tinyfiledialogs.h"
 
@@ -14,13 +15,20 @@ SInstaller::SInstaller() {
   int mainFontSize = LangManager::GetFont().baseSize;
   int smallFontSize = mainFontSize * 3 / 4;
   int largeFontSize = mainFontSize * 3 / 2;
+  patchValue = new OPatchValue();
+  patchValue->Download();
+  gamePathDetector = new OCheckGamePath(patchValue);
+  installPatch = new OInstallPatch(patchValue, gamePathDetector);
   versionText = new BOText("About.Info", {280, 50});
   readmeText = new BOScrollText("", {280, 150, 630, 450}, WHITE, smallFontSize);
   contactText = new BOText("Readme.Contact", {280, 600}, GREEN);
   languageText =
       new BOText("Meta.LanguageName", {120, 620}, WHITE, true, smallFontSize);
-  gamePathInput = new BOText("", {290, 60}, WHITE, false, smallFontSize);
+  currentGamePath = new BOText("", {290, 60}, WHITE, false, smallFontSize);
   gamePathState = new BOText("", {290, 100}, YELLOW, false, smallFontSize);
+  browsePathButton = new BOButton("GamePath.Browse", {290, 150}, {240, 80}),
+  installPatchButton =
+      new BOButton("Patch.InstallPatch", {450, 300}, {240, 80});
 
   background = {
       new BOImage("image/bg_static.png", {0, 0}, {960, 510}, Fade(WHITE, 0.8f)),
@@ -48,20 +56,11 @@ SInstaller::SInstaller() {
       new BOImage("image/black.png", {270, 20}, {670, 400}, Fade(WHITE, 0.5f)),
       new BOImage("image/black.png", {270, 450}, {670, 250}, Fade(WHITE, 0.5f)),
       new BOText("GamePath.Label", {290, 25}),
-      gamePathInput,
+      currentGamePath,
       gamePathState,
-      new BOButton("GamePath.Browse", {290, 150}, {240, 80},
-                   [this]() {
-                     std::string result = tinyfd_selectFolderDialog(
-                         LangManager::GetText("MsgBox.SelectFolder").c_str(),
-                         ".");
-
-                     if (result != "") {
-                       gamePathInput->SetText(result);
-                       gamePathDetector->SetPath(result);
-                     }
-                   }),
-  };
+      browsePathButton,
+      installPatch,
+    installPatchButton};
 
   readmePage = {
       new BOImage("image/black.png", {270, 20}, {670, 680}, Fade(WHITE, 0.5f)),
@@ -76,20 +75,6 @@ SInstaller::SInstaller() {
       new BOText("About.ContribList", {280, 350}),
       new BOText("About.Github", {280, 600}, YELLOW),
   };
-
-  pathValue = new OPatchValue();
-  gamePathDetector = new OCheckGamePath(pathValue);
-  gamePathDetector->OnSuccess = [this](const std::string &msg,
-                                       const std::string &path) {
-    gamePathState->SetText(msg);
-    gamePathState->SetColor(GREEN);
-    gamePathInput->SetText(path);
-  };
-
-  gamePathDetector->OnError = [this](const std::string &msg) {
-    gamePathState->SetText(msg);
-    gamePathState->SetColor(YELLOW);
-  };
 }
 
 SInstaller::~SInstaller() {
@@ -97,19 +82,44 @@ SInstaller::~SInstaller() {
   readmeText = nullptr;
   contactText = nullptr;
   languageText = nullptr;
-  gamePathInput = nullptr;
+  currentGamePath = nullptr;
   gamePathState = nullptr;
   gamePathDetector = nullptr;
 }
 
 void SInstaller::Init() {
-  std::string version =
-      GameManager::Get()->Settings().Get<std::string>("patcherVersion");
-  versionText->SetParam("VERSION", version);
-  std::string qqGroup =
-      GameManager::Get()->Settings().Get<std::string>("qqGroupCode");
-  contactText->SetParam("QQ_GROUP_CODE", qqGroup);
-  gamePathInput->SetText("GamePath.Placeholder");
+  // about page
+  versionText->SetParam(
+      "VERSION", GameManager::Get()->Settings().Get<std::string>("patcherVersion"));
+  contactText->SetParam(
+      "QQ_GROUP_CODE",
+      GameManager::Get()->Settings().Get<std::string>("qqGroupCode"));
+
+  // patch page
+  currentGamePath->SetText("GamePath.Placeholder");
+  gamePathDetector->OnSuccess = [this](const std::string &msg,
+                                       const std::string &path) {
+    gamePathState->SetText(msg);
+    gamePathState->SetColor(GREEN);
+    currentGamePath->SetText(path);
+  };
+
+  browsePathButton->SetCallback([this]() {
+    std::string result = tinyfd_selectFolderDialog(
+        LangManager::GetText("MsgBox.SelectFolder").c_str(), ".");
+
+    if (result != "") {
+      currentGamePath->SetText(result);
+      gamePathDetector->SetPath(result);
+    }
+  });
+  gamePathDetector->OnError = [this](const std::string &msg) {
+    gamePathState->SetText(msg);
+    gamePathState->SetColor(YELLOW);
+  };
+
+  installPatchButton->SetCallback(
+      [this]() { bool state = installPatch->Install(); });
 
   AddObjects(background);
   AddObjects(leftBar);
@@ -120,9 +130,7 @@ void SInstaller::Init() {
   AddObject(gamePathDetector);
   gamePathDetector->AutoSetPath();
 
-  LogManager::Info(
-      "[Main Scene] Deltarune CN Patcher successfully started, version: " +
-      version);
+  LogManager::Info("[Main Scene] Deltarune CN Patcher successfully started.");
 }
 
 void SInstaller::Update(float dt) { GameScene::Update(dt); }

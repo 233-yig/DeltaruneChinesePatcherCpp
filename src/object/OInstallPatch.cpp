@@ -4,6 +4,7 @@
 #include "../engine/LangManager.h"
 #include "OCheckGamePath.h"
 #include "OPatchValue.h"
+#include "raylib.h"
 #include "tinyfiledialogs.h"
 #include <filesystem>
 #include <fstream>
@@ -14,11 +15,44 @@ OInstallPatch::OInstallPatch(OPatchValue *pv, OCheckGamePath *cgp)
     : patchValue(pv), checkGamePath(cgp), tempDir(fs::path("temp")),
       patchFile(fs::path("patch") /
                 ("patch-" + GameManager::Get()->GetCurrentLanguage() + ".7z")) {
+  stateArrow = new BOText("->", {300, 480}, YELLOW);
+  installStepText = {
+      new BOText("InstallStep.DownloadPatch", {350, 495}, WHITE),
+      new BOText("InstallStep.BackupGame", {350, 530}, WHITE),
+      new BOText("InstallStep.ExtractPatch", {350, 565}, WHITE),
+      new BOText("InstallStep.ApplyDelta", {350, 600}, WHITE),
+      new BOText("InstallStep.CopyStaticFiles", {350, 635}, WHITE),
+  };
 }
 OInstallPatch::InstallStep OInstallPatch::GetCurrentStep() {
   return currentStep;
 }
 
+void OInstallPatch::Draw() {
+  for (int i = 0; i < (int)currentStep; i++) {
+    installStepText[i]->SetColor(GREEN);
+    installStepText[i]->Draw();
+  }
+  std::vector<std::pair<InstallResult, Color>> stateColor = {
+      {InstallResult::NotStarted, WHITE},
+      {InstallResult::Installing, YELLOW},
+      {InstallResult::Failed, RED},
+      {InstallResult::Successful, GREEN},
+  };
+  for (auto &[result, color] : stateColor) {
+    if (currentResult == result)
+      installStepText[(int)currentStep]->SetColor(color);
+    break;
+  }
+  stateArrow->SetPosition(
+      {300, installStepText[(int)currentStep]->GetPosition().y});
+  installStepText[(int)currentStep]->Draw();
+  stateArrow->Draw();
+  for (int i = (int)currentStep + 1; i < installStepText.size(); i++) {
+    installStepText[i]->SetColor(WHITE);
+    installStepText[i]->Draw();
+  }
+}
 bool OInstallPatch::ValidatePatch(fs::path patchFile) {
   if (patchValue->GetState() != OPatchValue::PatchValueState::Ready) {
     LogManager::Warning(
@@ -81,15 +115,16 @@ bool OInstallPatch::DownloadPatch() {
 }
 
 bool OInstallPatch::Install() {
-  currentStep = InstallStep::NotStarted;
+  currentResult = InstallResult::Installing;
   fs::path path = checkGamePath->GetPath();
   OCheckGamePath::InstallMode mode = checkGamePath->GetInstallMode();
   LogManager::Info("[Install] Start installing patch...");
   LogManager::Info("[Install] Game path: " + path.string());
 
-  if (fs::exists(patchFile)) {
+  if (!fs::exists(patchFile)) {
     currentStep = InstallStep::DownloadPatch;
     if (!DownloadPatch()) {
+      currentResult = InstallResult::Failed;
       return false;
     }
   }
@@ -99,6 +134,7 @@ bool OInstallPatch::Install() {
         "Error", LangManager::GetText("Install.ShaMismatchWarning").c_str(),
         "yesno", "warning", 1);
     if (choice == 1) {
+      currentResult = InstallResult::Failed;
       return false;
     }
   }
@@ -109,16 +145,22 @@ bool OInstallPatch::Install() {
   }
 
   currentStep = InstallStep::ExtractPatch;
-  if (!ExtractPatch(path, patchFile))
+  if (!ExtractPatch(patchFile)) {
+    currentResult = InstallResult::Failed;
     return false;
+  }
   currentStep = InstallStep::ApplyDelta;
-  if (!ApplyDelta(path))
+  if (!ApplyDelta(path)) {
+    currentResult = InstallResult::Failed;
     return false;
+  }
   currentStep = InstallStep::CopyStaticFiles;
-  if (!CopyStaticFiles(path))
+  if (!CopyStaticFiles(path)) {
+    currentResult = InstallResult::Failed;
     return false;
+  }
 
-  currentStep = InstallStep::Finished;
+  currentResult = InstallResult::Successful;
   LogManager::Info("[Install] Patch installed successfully!");
   return true;
 }
@@ -147,7 +189,7 @@ bool OInstallPatch::BackupGame(fs::path gamePath) {
   return hasError;
 }
 
-bool OInstallPatch::ExtractPatch(fs::path patchFile, fs::path gamePath) {
+bool OInstallPatch::ExtractPatch(fs::path patchFile) {
   LogManager::Info("[Install] Extracting patch to temp directory...");
   fs::remove_all(tempDir);
   fs::create_directories(tempDir);
@@ -164,8 +206,9 @@ bool OInstallPatch::ExtractPatch(fs::path patchFile, fs::path gamePath) {
     return false;
   }
 
-  std::string cmd = sevenZip.string() + " x \"" + patchFile.string() +
+  std::string cmd = "\"" + sevenZip.string() + "\" x \"" + patchFile.string() +
                     "\" -o\"" + tempDir.string() + "\" -y";
+  LogManager::Info(cmd);
 
   int ret = std::system(cmd.c_str());
   if (ret != 0) {

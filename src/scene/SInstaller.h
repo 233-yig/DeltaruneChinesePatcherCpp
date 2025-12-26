@@ -10,6 +10,7 @@ class BOButton;
 class GameObject;
 class OCheckGamePath;
 class OPatchValue;
+class OInstallPatch;
 
 class SInstaller : public GameScene {
 public:
@@ -24,17 +25,22 @@ private:
   BOScrollText *readmeText{nullptr};
   BOText *contactText{nullptr};
   BOText *languageText{nullptr};
-  BOText *gamePathInput{nullptr};
+  BOText *currentGamePath{nullptr};
   BOText *gamePathState{nullptr};
+  BOText *installResult{nullptr};
+  BOButton *browsePathButton{nullptr};
   std::vector<GameObject *> background;
   std::vector<GameObject *> leftBar;
   std::vector<GameObject *> patchPage;
   std::vector<GameObject *> readmePage;
   std::vector<GameObject *> aboutPage;
 
+  BOButton *installPatchButton{nullptr};
+
   void SwitchPage(Page page);
 
   OCheckGamePath *gamePathDetector;
-  OPatchValue *pathValue;
+  OPatchValue *patchValue;
+  OInstallPatch *installPatch;
 };
 #endif

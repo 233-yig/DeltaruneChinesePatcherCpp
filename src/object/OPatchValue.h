@@ -3,6 +3,7 @@
 #include "../engine/GameObject.h"
 #include "../engine/GameConfig.h"
 #include "../engine/DownloadTask.h"
+#include <filesystem>
 #include <memory>
 class OPatchValue : GameObject {
 public:
@@ -18,5 +19,6 @@ private:
   std::unique_ptr<DownloadTask> downloadTask;
   PatchValueState currentState = PatchValueState::NotReady;
   GameConfig config;
+  const std::filesystem::path valueFile;
 };
 #endif

@@ -38,6 +38,7 @@ public:
   void SetColor(Color c);
   void SetAlpha(float a);
   Vector2 GetSize() const;
+  Vector2 GetPosition() const;
 
   void RefreshText() override;
   void Update(float deltaTime) override;
