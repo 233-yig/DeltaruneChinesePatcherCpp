@@ -32,6 +32,9 @@ void OReadme::Draw() {
     readmeText->Draw();
 }
 
+void OReadme::RefreshText() {
+  readmeText->RefreshText();
+}
 std::string OReadme::FindReadmeFile() const {
   std::string lang = GameManager::Get()->GetCurrentLanguage();
 

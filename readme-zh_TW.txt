@@ -185,51 +185,51 @@
 
 【漢化組成員名單】
 
--- 策划&程序 --
-yig，ws3917，杜若(santizhizi)，鲟鱼子，
-憨憨羊の宇航鸽鸽，好人Ⅲ[Lyra]
+-- 策劃&程序 --
+yig，ws3917，杜若(santizhizi)，鱘魚子，
+憨憨羊の宇航鴿鴿，好人Ⅲ[Lyra]
 
--- 第1章翻译 --
+-- 第1章翻譯 --
 yig，stargazy，米粒(enderesting)，Wiike，JH，
-瑶铃，一瓶洋酒，田澄，凤凰山芭蕉^1，好人Ⅲ[Lyra]
+瑤鈴，一瓶洋酒，田澄，鳳凰山芭蕉^1，好人Ⅲ[Lyra]
 
--- 第1章校对 --
-鲟鱼子，旋风SELF，单衫_石宇砖，鸥皇不欧，FH丶CY，
-yzdnn，JH，丢丢hamburger，ax暗星233，鼠球，
+-- 第1章校對 --
+鱘魚子，旋風SELF，單衫_石宇磚，鷗皇不歐，FH丶CY，
+yzdnn，JH，丟丟hamburger，ax暗星233，鼠球，
 杜若(santizhizi)，CoCo水君(Toast)，Cupcake～，
 w1n1n1t351，onomi，
 
--- 第2章翻译 --
-夕葵，米粒(enderesting)，单衫_石宇砖，无辣味wdw，
-Neubulae[Almona]，JH，鲟鱼子，瑶玲，^1瓶洋酒[Unsub]，
+-- 第2章翻譯 --
+夕葵，米粒(enderesting)，單衫_石宇磚，無辣味wdw，
+Neubulae[Almona]，JH，鱘魚子，瑤玲，^1瓶洋酒[Unsub]，
 以太[EtherKo]，Coco，Buttons，TNN_Endymion，
 wiike，田澄，iNTb
 
--- 第2章校对 --
-旋风SELF，FH丶CY，单衫_石宇砖，Uni，Cupcake～，
-鼠球，鸥皇不欧，JH，w1n1n1t351，丢丢hamburger，
+-- 第2章校對 --
+旋風SELF，FH丶CY，單衫_石宇磚，Uni，Cupcake～，
+鼠球，鷗皇不歐，JH，w1n1n1t351，丟丟hamburger，
 onomi，Neubulae[Almona]，凝雨白沙，黎小明，
 
--- 第3章翻译&校对 --
-鸥皇不欧，AX暗星233，单衫_石宇砖，瓦斯霓特·洋芋，
-Neubulae[Almona]，Uni，瑶玲，夕葵，鼠球，FH丶CY，
+-- 第3章翻譯&校對 --
+鷗皇不歐，AX暗星233，單衫_石宇磚，瓦斯霓特·洋芋，
+Neubulae[Almona]，Uni，瑤玲，夕葵，鼠球，FH丶CY，
 wiike，Cupcake~，yzdnn，Mercurypie，凝雨白沙，
-旋风SELF，就是菜刀，丢丢hamburger，Felixeffe，
-^1瓶洋酒[Unsub]，JH，w1n1n1t351，onomi，无辣味wdw
+旋風SELF，就是菜刀，丟丟hamburger，Felixeffe，
+^1瓶洋酒[Unsub]，JH，w1n1n1t351，onomi，無辣味wdw
 
--- 第4章翻译&校对 --
-单衫_石宇砖，鸥皇不欧，凤凰山芭蕉^1，OceanBear，
-Felixeffe.，FH丶CY，瑶玲，yzdnn，就是菜刀，AX暗星233，
+-- 第4章翻譯&校對 --
+單衫_石宇磚，鷗皇不歐，鳳凰山芭蕉^1，OceanBear，
+Felixeffe.，FH丶CY，瑤玲，yzdnn，就是菜刀，AX暗星233，
 Uni，瓦斯霓特•洋芋，米粒(enderesting)，w1n1n1t351，
 夕葵，鼠球，Mercurypie，^1瓶洋酒[Unsub]，Cupcake~，
 Lucas•曹•CKC，CoCo水君(Toast)，凝雨白沙，JH，
-黎小明，Neubulae[Almona]，旋风SELF，无辣味wdw
+黎小明，Neubulae[Almona]，旋風SELF，無辣味wdw
 
 -- 美工 --
-yzdnn，晨忆风谷，玖颜332(teniver)，单衫_石宇砖，
-米粒(enderesting)，凝雨白沙，便利贴不翘边，夕葵，
-YiTang，Buttons，晓晓_Akatsuki，JH，闻笛，空闲
+yzdnn，晨憶風谷，玖顏332(teniver)，單衫_石宇磚，
+米粒(enderesting)，凝雨白沙，便利貼不翹邊，夕葵，
+YiTang，Buttons，曉曉_Akatsuki，JH，聞笛，空閒
 
--- 测试 --
-Orlighto，Ralsei，西乡小男孩，云凝沙，Mr_H2T，
-ALoss，Shine晓光
+-- 測試 --
+Orlighto，Ralsei，西鄉小男孩，雲凝沙，Mr_H2T，
+ALoss，Shine曉光

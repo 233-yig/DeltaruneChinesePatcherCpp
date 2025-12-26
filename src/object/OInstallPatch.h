@@ -32,6 +32,7 @@ public:
   void StartDownload();
   void StartInstall();
   void StartUninstall();
+  void ClearMsg();
 
   // GameObject
   void Update(float dt) override {}
@@ -44,6 +45,7 @@ private:
   // === 后台线程入口 ===
   void InstallWorker();
   void UninstallWorker();
+  void RefreshText() override;
 
   // === 实际步骤 ===
   bool BackupGame(const fs::path &, bool uninstall = false);

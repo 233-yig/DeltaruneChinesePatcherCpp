@@ -41,8 +41,16 @@ OInstallPatch::~OInstallPatch() {
   if (uninstallThread.joinable())
     uninstallThread.join();
 }
+
+void OInstallPatch::ClearMsg() {
+  hasError = false;
+  hasWarning = false;
+  errorKey.clear();
+  warningKey.clear();
+}
 void OInstallPatch::StartDownload() {
-  if (flowState != PatchFlowState::Idle || flowState != PatchFlowState::Failed)
+  ClearMsg();
+  if (flowState != PatchFlowState::Idle && flowState != PatchFlowState::Failed)
     return;
   flowState = PatchFlowState::Installing;
   currentStep = InstallStep::DownloadPatch;
@@ -90,10 +98,21 @@ void OInstallPatch::StartDownload() {
       });
 }
 
+void OInstallPatch::RefreshText() {
+  for (auto &text : installStepText) {
+    text->RefreshText();
+  }
+  stateArrow->RefreshText();
+  errorType->RefreshText();
+  errorGuidance->RefreshText();
+  warningGuidance->RefreshText();
+  warningGuidance->RefreshText();
+}
 void OInstallPatch::StartInstall() {
   if (installing || uninstalling)
     return;
 
+  ClearMsg();
   if (installThread.joinable()) {
     installThread.join();
   }
@@ -106,6 +125,7 @@ void OInstallPatch::StartUninstall() {
   if (installing || uninstalling)
     return;
 
+  ClearMsg();
   if (uninstallThread.joinable()) {
     uninstallThread.join();
   }
@@ -199,10 +219,6 @@ void OInstallPatch::Warning(const std::string &reason,
 }
 
 void OInstallPatch::InstallWorker() {
-  hasError = false;
-  hasWarning = false;
-  errorKey.clear();
-  warningKey.clear();
   currentStep = InstallStep::ValidatePatch;
   if (!fs::exists(patchFile)) {
     Abort("Patch not found, please download first", "PatchNotFound");
