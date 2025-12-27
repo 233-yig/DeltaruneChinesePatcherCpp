@@ -1,7 +1,7 @@
-﻿{
+{
     "Meta": {
-        "Title": "DELTARUNE 漢化安裝程序",
-        "TitleShort": "DR漢化安裝程序",
+        "Title": "DELTARUNE 漢化安裝器",
+        "TitleShort": "DR漢化安裝器",
         "LanguageName": "繁體中文"
     },
     "Button": {
@@ -10,10 +10,10 @@
         "About": "關於軟體"
     },
     "About": {
-        "Info": "DELTARUNE 漢化安裝程序 C++ 版 \n版本號：{VERSION}  圖形庫：Raylib\n\n設置 DELTARUNE Steam 版安裝目錄\n安裝程序會自動為每個章節的 data 安裝補丁",
+        "Info": "DELTARUNE 漢化安裝器 C++ 版 \n版本號：{VERSION}  圖形庫：Raylib\n\n設置 DELTARUNE Steam 版安裝目錄\n安裝器會自動為每個章節的 data 安裝補丁",
         "ContribTitle": "貢獻者：",
-        "ContribList": "ws3917 - 編寫安裝程序代碼\n憨憨羊の宇航鴿鴿 - Godot版安裝程序參考\nWhatDamon - 漢化安裝程序圖標\n好人漢化組 - DELTARUNE 中文本地化",
-        "Github": "此安裝程序已在 Github 上開源\n點擊打開 Github 倉庫"
+        "ContribList": "ws3917 - 編寫安裝器代碼\n憨憨羊の宇航鴿鴿 - Godot版安裝器參考\nWhatDamon - 漢化安裝器圖標\n好人漢化組 - DELTARUNE 中文本地化",
+        "Github": "此安裝器已在 Github 上開源\n點擊打開 Github 倉庫"
     },
     "Readme": {
         "Title": "安裝漢化前，請務必仔細閱讀\n下面的說明！",
